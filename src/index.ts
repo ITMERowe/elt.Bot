@@ -14,7 +14,7 @@ async function main() {
 
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-  client.once('ready', async () => {
+  client.once('clientReady', async () => {
     console.info('[INFO] Discord client ready');
 
     // initialize state

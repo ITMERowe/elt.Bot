@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "postinstall": "npm run build",
+    "postinstall": "npm run build && npx playwright install chromium",
     "prestart": "npm run build",
     "start": "node dist/index.js",
     "initial-fetch": "ts-node src/initialFetch.ts",
