@@ -6,7 +6,8 @@ import { ChildProcess, spawn } from 'child_process';
 import { config } from './config';
 import { readState } from './services/storage';
 
-const PORT = Number(process.env.GUI_PORT || '4173');
+const PORT = Number(process.env.PORT || process.env.GUI_PORT || '4173');
+const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
 const ALLOWED_JOBS: Record<string, string> = {
   update: 'update-fetch',
@@ -165,8 +166,9 @@ const server = http.createServer(async (request, response) => {
   await serveStatic(requestUrl.pathname, response);
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.info(`[GUI] Dashboard running at http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+  const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+  console.info(`[GUI] Dashboard running at http://${displayHost}:${PORT}`);
 });
 
 function shutdown(): void {

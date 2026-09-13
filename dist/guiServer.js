@@ -10,7 +10,8 @@ const readline_1 = __importDefault(require("readline"));
 const child_process_1 = require("child_process");
 const config_1 = require("./config");
 const storage_1 = require("./services/storage");
-const PORT = Number(process.env.GUI_PORT || '4173');
+const PORT = Number(process.env.PORT || process.env.GUI_PORT || '4173');
+const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path_1.default.resolve(process.cwd(), 'public');
 const ALLOWED_JOBS = {
     update: 'update-fetch',
@@ -157,8 +158,9 @@ const server = http_1.default.createServer(async (request, response) => {
     }
     await serveStatic(requestUrl.pathname, response);
 });
-server.listen(PORT, '127.0.0.1', () => {
-    console.info(`[GUI] Dashboard running at http://127.0.0.1:${PORT}`);
+server.listen(PORT, HOST, () => {
+    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+    console.info(`[GUI] Dashboard running at http://${displayHost}:${PORT}`);
 });
 function shutdown() {
     shuttingDown = true;
