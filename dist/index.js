@@ -13,7 +13,16 @@ async function main() {
         console.error('[ERROR] Invalid configuration:', err instanceof Error ? err.message : err);
         process.exit(1);
     }
-    const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds] });
+    const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds, discord_js_1.GatewayIntentBits.GuildMembers] });
+    client.on('guildMemberAdd', async (member) => {
+        try {
+            await (0, notifier_1.sendWelcomeNotification)(client, config_1.config.welcomeChannelId, member);
+            console.info('[INFO] Welcome sent for', member.user.tag);
+        }
+        catch (err) {
+            console.error('[ERROR] Failed to send welcome message:', err instanceof Error ? err.message : err);
+        }
+    });
     client.once('clientReady', async () => {
         console.info('[INFO] Discord client ready');
         // initialize state

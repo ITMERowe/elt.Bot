@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendPostNotification = sendPostNotification;
+exports.sendWelcomeNotification = sendWelcomeNotification;
 const discord_js_1 = require("discord.js");
 const config_1 = require("../config");
+const welcomeBanner_1 = require("./welcomeBanner");
 function shorten(s, max = 300) {
     if (!s)
         return null;
@@ -49,6 +51,22 @@ async function sendPostNotification(client, channelId, post, options = {}) {
         }
         catch (err) {
             console.warn('[WARN] Message sent but automatic publishing failed:', err instanceof Error ? err.message : err);
+        }
+    }
+}
+async function sendWelcomeNotification(client, channelId, member) {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !(channel instanceof discord_js_1.TextChannel || channel instanceof discord_js_1.NewsChannel)) {
+        throw new Error('Configured channel not found or not a text or announcement channel');
+    }
+    const banner = await (0, welcomeBanner_1.createWelcomeBanner)(member);
+    const message = await channel.send({ files: [{ attachment: banner, name: 'welcome.png' }] });
+    if (channel instanceof discord_js_1.NewsChannel) {
+        try {
+            await message.crosspost();
+        }
+        catch (err) {
+            console.warn('[WARN] Welcome sent but automatic publishing failed:', err instanceof Error ? err.message : err);
         }
     }
 }

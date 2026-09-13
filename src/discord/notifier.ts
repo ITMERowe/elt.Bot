@@ -1,6 +1,7 @@
-import { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel, NewsChannel } from 'discord.js';
+import { Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel, NewsChannel, GuildMember } from 'discord.js';
 import { Post } from '../ganknow/types';
 import { config } from '../config';
+import { createWelcomeBanner } from './welcomeBanner';
 
 function shorten(s?: string, max = 300): string | null {
   if (!s) return null;
@@ -61,6 +62,23 @@ export async function sendPostNotification(
       console.info('[INFO] Published announcement message', message.id);
     } catch (err) {
       console.warn('[WARN] Message sent but automatic publishing failed:', err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+export async function sendWelcomeNotification(client: Client, channelId: string, member: GuildMember): Promise<void> {
+  const channel = await client.channels.fetch(channelId);
+  if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
+    throw new Error('Configured channel not found or not a text or announcement channel');
+  }
+
+  const banner = await createWelcomeBanner(member);
+  const message = await channel.send({ files: [{ attachment: banner, name: 'welcome.png' }] });
+  if (channel instanceof NewsChannel) {
+    try {
+      await message.crosspost();
+    } catch (err) {
+      console.warn('[WARN] Welcome sent but automatic publishing failed:', err instanceof Error ? err.message : err);
     }
   }
 }

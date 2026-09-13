@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { config, validateConfig } from './config';
 import { fetchRecentPostsFromCreator } from './ganknow/client';
 import { readState, writeState, isSeenPost, markSeenPostsByPosts } from './services/storage';
-import { sendPostNotification } from './discord/notifier';
+import { sendPostNotification, sendWelcomeNotification } from './discord/notifier';
 
 async function main() {
   try {
@@ -12,7 +12,16 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+
+  client.on('guildMemberAdd', async member => {
+    try {
+      await sendWelcomeNotification(client, config.welcomeChannelId, member);
+      console.info('[INFO] Welcome sent for', member.user.tag);
+    } catch (err) {
+      console.error('[ERROR] Failed to send welcome message:', err instanceof Error ? err.message : err);
+    }
+  });
 
   client.once('clientReady', async () => {
     console.info('[INFO] Discord client ready');

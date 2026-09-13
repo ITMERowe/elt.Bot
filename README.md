@@ -14,6 +14,10 @@ The bot uses Playwright to render the creator feed, because the post cards are l
 
 The Discord bot needs permission to view the target channel, send messages, embed links, and attach links. Announcement-channel publishing is attempted automatically when the target is a news channel.
 
+To receive new-member events, open the Discord Developer Portal, select the bot, open **Bot > Privileged Gateway Intents**, enable **Server Members Intent**, and save. The bot posts a generated welcome banner in `WELCOME_CHANNEL_ID` whenever someone joins a server where the bot is present. If that variable is empty, it uses `DISCORD_CHANNEL_ID`. This works even when feed auto-sharing is turned off.
+
+Welcome banners are generated as 900x280 PNG files. Put a background image at `public/welcome-background.png`, or set `WELCOME_BACKGROUND_PATH` to another local image path. You can add a transparent PNG as a foreground layer with `WELCOME_FOREGROUND_PATH`; it is drawn after the avatar so artwork can sit in front of or frame the profile picture. Set `WELCOME_FONT_FAMILY` to a font installed on the machine running the bot, such as `Georgia`, `Impact`, or `Trebuchet MS`. The bot then overlays the member display name, server name, and member count. If either image is missing, it continues with the available layers.
+
 ## Setup
 
 ```powershell
@@ -27,9 +31,16 @@ Set the values in `.env`:
 | Variable | Required | Description |
 | --- | --- | --- |
 | `DISCORD_TOKEN` | Yes for Discord jobs | Bot token used to log in |
-| `DISCORD_CHANNEL_ID` | Yes for Discord jobs | Destination text or announcement channel |
+| `DISCORD_CHANNEL_ID` | Yes for Discord jobs | Destination text or announcement channel for Ganknow updates |
+| `WELCOME_CHANNEL_ID` | No | Channel for new-member welcomes; falls back to `DISCORD_CHANNEL_ID` |
+| `WELCOME_BACKGROUND_PATH` | No | Background image for generated welcome banners; defaults to `public/welcome-background.png` |
+| `WELCOME_FOREGROUND_PATH` | No | Optional transparent foreground layer drawn over the avatar and background |
+| `WELCOME_FONT_FAMILY` | No | Installed font family for banner text; defaults to `sans-serif` |
+| `WELCOME_FONT_PATH` | No | Local `.otf` or `.ttf` file used for supporting banner text |
+| `WELCOME_TITLE_FONT_PATH` | No | Local `.otf` or `.ttf` file used for the `Welcome, name!` line |
+| `WELCOME_TITLE_FONT_FAMILY` | No | Alias used when registering the title font; defaults to `WelcomeTitle` |
 | `GANKNOW_CREATOR_URL` | No | Creator feed URL; defaults to `https://ganknow.com/karamelt` |
-| `POLL_INTERVAL_MS` | No | Continuous monitor interval in milliseconds; defaults to `60000` |
+| `POLL_INTERVAL_MS` | No | Continuous monitor interval in milliseconds; defaults to `3600000` (one hour) |
 | `DISCORD_CLIENT_ID` | No | Reserved for Discord application configuration |
 | `DISCORD_APP_ID` | No | Reserved for Discord application configuration |
 | `DISCORD_PUBLIC_KEY` | No | Reserved for Discord interaction configuration |
@@ -60,7 +71,7 @@ Start the dashboard with:
 npm run gui
 ```
 
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The server listens on localhost only and starts idle. It provides these actions:
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The server listens on localhost only. The Discord bot logs in and appears online when the dashboard starts, but feed polling and automatic publishing remain off until enabled. It provides these actions:
 
 - **Check for new posts** runs `update-fetch` and adds new feed items to local state.
 - **Publish new posts** runs `send-new-posts` and publishes queued items in chronological order.
@@ -98,6 +109,7 @@ This publishes `elt.Bot Dashboard.exe` in the project root. Run it from the proj
 | `npm run send-new-posts` | Publish pending non-pinned posts to Discord |
 | `npm run backfill-updates` | Publish pending posts without automatic announcement cross-posting |
 | `npm run send-sample` | Send a test embed to Discord |
+| `npm run send-welcome-sample` | Generate a welcome banner using an existing non-bot server member |
 | `npm run build` | Type-check and compile TypeScript to `dist/` |
 | `npm run start` | Run the compiled continuous monitor |
 
@@ -130,6 +142,7 @@ src/
 	sendNewPosts.ts          Normal Discord publisher
 	backfillUpdates.ts       Quiet publisher
 	sendSample.ts            Test embed sender
+	discordPresence.ts       Discord login without feed polling
 public/                    Dashboard HTML, JavaScript, CSS, and icon
 launcher/                  .NET 8 Windows launcher
 data/state.json            Runtime state, ignored by Git

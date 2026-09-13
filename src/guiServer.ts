@@ -19,6 +19,7 @@ const ALLOWED_JOBS: Record<string, string> = {
 
 let activeProcess: ChildProcess | null = null;
 let activeJob: string | null = null;
+let presenceProcess: ChildProcess | null = null;
 let logs: string[] = [];
 let shuttingDown = false;
 let shutdownPromptActive = false;
@@ -47,6 +48,7 @@ async function getStatus() {
   return {
     activeJob,
     running: activeProcess !== null,
+    discordOnline: presenceProcess !== null,
     logs,
     state: {
       seen: state.seenPosts.length,
@@ -71,6 +73,8 @@ function runJob(jobKey: string): void {
   const script = ALLOWED_JOBS[jobKey];
   if (!script || activeProcess) return;
 
+  if (jobKey === 'monitor') stopPresence();
+
   const isWindows = process.platform === 'win32';
   const command = isWindows ? 'cmd.exe' : 'npm';
   const commandArgs = isWindows
@@ -90,6 +94,7 @@ function runJob(jobKey: string): void {
     appendLog(`[GUI] ${script} finished with exit code ${code ?? 'unknown'}`);
     activeProcess = null;
     activeJob = null;
+    if (!shuttingDown) startPresence();
   });
   activeProcess.on('error', error => appendLog(`[GUI] Failed to start job: ${error.message}`));
 }
@@ -102,6 +107,42 @@ function stopJob(): void {
   } else {
     activeProcess.kill();
   }
+}
+
+function startPresence(): void {
+  if (presenceProcess) return;
+
+  const isWindows = process.platform === 'win32';
+  const command = isWindows ? 'cmd.exe' : 'npm';
+  const commandArgs = isWindows
+    ? ['/d', '/s', '/c', 'npm.cmd run presence']
+    : ['run', 'presence'];
+
+  appendLog('[GUI] Starting Discord presence');
+  presenceProcess = spawn(command, commandArgs, {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  presenceProcess.stdout?.on('data', data => appendLog(String(data).trimEnd()));
+  presenceProcess.stderr?.on('data', data => appendLog(String(data).trimEnd()));
+  presenceProcess.on('close', code => {
+    appendLog(`[GUI] Discord presence stopped with exit code ${code ?? 'unknown'}`);
+    presenceProcess = null;
+  });
+  presenceProcess.on('error', error => appendLog(`[GUI] Failed to start Discord presence: ${error.message}`));
+}
+
+function stopPresence(): void {
+  if (!presenceProcess) return;
+  appendLog('[GUI] Stopping Discord presence...');
+  if (process.platform === 'win32' && presenceProcess.pid) {
+    spawn('taskkill', ['/pid', String(presenceProcess.pid), '/t', '/f']);
+  } else {
+    presenceProcess.kill();
+  }
+  presenceProcess = null;
 }
 
 async function serveStatic(requestPath: string, response: ServerResponse): Promise<void> {
@@ -167,11 +208,13 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.info(`[GUI] Dashboard running at http://127.0.0.1:${PORT}`);
+  startPresence();
 });
 
 function shutdown(): void {
   shuttingDown = true;
   stopJob();
+  stopPresence();
   server.close();
   setTimeout(() => process.exit(0), 250);
 }

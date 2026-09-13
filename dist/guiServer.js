@@ -10,8 +10,7 @@ const readline_1 = __importDefault(require("readline"));
 const child_process_1 = require("child_process");
 const config_1 = require("./config");
 const storage_1 = require("./services/storage");
-const PORT = Number(process.env.PORT || process.env.GUI_PORT || '4173');
-const HOST = process.env.HOST || '0.0.0.0';
+const PORT = Number(process.env.GUI_PORT || '4173');
 const PUBLIC_DIR = path_1.default.resolve(process.cwd(), 'public');
 const ALLOWED_JOBS = {
     update: 'update-fetch',
@@ -23,6 +22,7 @@ const ALLOWED_JOBS = {
 };
 let activeProcess = null;
 let activeJob = null;
+let presenceProcess = null;
 let logs = [];
 let shuttingDown = false;
 let shutdownPromptActive = false;
@@ -49,6 +49,7 @@ async function getStatus() {
     return {
         activeJob,
         running: activeProcess !== null,
+        discordOnline: presenceProcess !== null,
         logs,
         state: {
             seen: state.seenPosts.length,
@@ -72,6 +73,8 @@ function runJob(jobKey) {
     const script = ALLOWED_JOBS[jobKey];
     if (!script || activeProcess)
         return;
+    if (jobKey === 'monitor')
+        stopPresence();
     const isWindows = process.platform === 'win32';
     const command = isWindows ? 'cmd.exe' : 'npm';
     const commandArgs = isWindows
@@ -90,6 +93,8 @@ function runJob(jobKey) {
         appendLog(`[GUI] ${script} finished with exit code ${code ?? 'unknown'}`);
         activeProcess = null;
         activeJob = null;
+        if (!shuttingDown)
+            startPresence();
     });
     activeProcess.on('error', error => appendLog(`[GUI] Failed to start job: ${error.message}`));
 }
@@ -103,6 +108,40 @@ function stopJob() {
     else {
         activeProcess.kill();
     }
+}
+function startPresence() {
+    if (presenceProcess)
+        return;
+    const isWindows = process.platform === 'win32';
+    const command = isWindows ? 'cmd.exe' : 'npm';
+    const commandArgs = isWindows
+        ? ['/d', '/s', '/c', 'npm.cmd run presence']
+        : ['run', 'presence'];
+    appendLog('[GUI] Starting Discord presence');
+    presenceProcess = (0, child_process_1.spawn)(command, commandArgs, {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+    presenceProcess.stdout?.on('data', data => appendLog(String(data).trimEnd()));
+    presenceProcess.stderr?.on('data', data => appendLog(String(data).trimEnd()));
+    presenceProcess.on('close', code => {
+        appendLog(`[GUI] Discord presence stopped with exit code ${code ?? 'unknown'}`);
+        presenceProcess = null;
+    });
+    presenceProcess.on('error', error => appendLog(`[GUI] Failed to start Discord presence: ${error.message}`));
+}
+function stopPresence() {
+    if (!presenceProcess)
+        return;
+    appendLog('[GUI] Stopping Discord presence...');
+    if (process.platform === 'win32' && presenceProcess.pid) {
+        (0, child_process_1.spawn)('taskkill', ['/pid', String(presenceProcess.pid), '/t', '/f']);
+    }
+    else {
+        presenceProcess.kill();
+    }
+    presenceProcess = null;
 }
 async function serveStatic(requestPath, response) {
     const requested = requestPath === '/' ? '/index.html' : requestPath;
@@ -158,13 +197,14 @@ const server = http_1.default.createServer(async (request, response) => {
     }
     await serveStatic(requestUrl.pathname, response);
 });
-server.listen(PORT, HOST, () => {
-    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
-    console.info(`[GUI] Dashboard running at http://${displayHost}:${PORT}`);
+server.listen(PORT, '127.0.0.1', () => {
+    console.info(`[GUI] Dashboard running at http://127.0.0.1:${PORT}`);
+    startPresence();
 });
 function shutdown() {
     shuttingDown = true;
     stopJob();
+    stopPresence();
     server.close();
     setTimeout(() => process.exit(0), 250);
 }
