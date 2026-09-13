@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>elt.Bot — Channel Assistant</title>
+  <link rel="icon" href="/bot.ico" type="image/x-icon">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL@0..1&display=swap">
+<base target="_blank">
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="/bot.ico" alt="elt.Bot">
+    <div class="brand">
+      <b>elt.Bot</b>
+      <span>CHANNEL ASSISTANT</span>
+    </div>
+    <div class="crumb">CHANNEL&nbsp;/&nbsp;<b>KARAMELT</b></div>
+    <div class="top-right">
+      <div class="online">
+        <span id="connectionDot" class="dot"></span>
+        <span id="connectionText">Connecting</span>
+      </div>
+      <div id="clock" class="clock mono"></div>
+      <button id="exitButton" class="header-exit">Close</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">CHANNEL / KARAMELT</p>
+        <h1>Your channel,<br><em>taken care of quietly.</em></h1>
+        <p>elt.Bot keeps an eye on the feed and shares new posts for you. Nothing goes out unless you say so — older posts can be caught up without announcing each one.</p>
+      </div>
+      <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </section>
+
+    <section class="stats" aria-label="At a glance">
+      <div class="stat">
+        <div class="stat-icon">#</div>
+        <div>
+          <div class="label">POSTS TRACKED</div>
+          <div id="seenCount" class="value">--</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">&gt;</div>
+        <div>
+          <div class="label">LAST PUBLISHED</div>
+          <div id="lastSent" class="value">--</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon lime">R</div>
+        <div>
+          <div class="label">CHECKS EVERY</div>
+          <div id="pollInterval" class="value"><span id="pollIntervalValue">--</span> <small id="pollState"></small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <section class="card operations">
+        <div class="card-head">
+          <div>
+            <div class="kicker">QUICK ACTIONS</div>
+            <h2>What would you like to do?</h2>
+          </div>
+          <span id="jobBadge" class="status idle">IDLE</span>
+        </div>
+
+        <div class="controls polling-control">
+          <div class="control-row">
+            <div>
+              <b>Auto-sharing</b>
+              <span>Let elt.Bot check the feed and share new posts on its own</span>
+            </div>
+            <div class="control-action">
+              <span id="pollToggleLabel" class="toggle-label">OFF</span>
+              <button id="monitorButton" class="switch" data-job="monitor" aria-label="Turn auto-sharing on or off"><span></span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="operation-grid">
+          <button class="operation hot" data-job="update">
+            <span class="operation-icon">&gt;</span>
+            <span><b>Check for new posts</b><small>See what&rsquo;s new on the feed</small></span>
+            <strong>run &gt;</strong>
+          </button>
+          <button class="operation" data-job="send">
+            <span class="operation-icon">&gt;</span>
+            <span><b>Publish new posts</b><small>Share everything that&rsquo;s waiting</small></span>
+            <strong>run &gt;</strong>
+          </button>
+        </div>
+
+        <div class="operations-foot">
+          <span>Waiting to publish <b id="queueCount">--</b></span>
+          <span>Last published <b id="lastSentFoot">--</b></span>
+          <span>Channel <b>localhost</b></span>
+        </div>
+      </section>
+
+      <section class="card maintenance">
+        <div class="card-head">
+          <div>
+            <div class="kicker">HOUSEKEEPING</div>
+            <h2>Keeping things tidy</h2>
+          </div>
+        </div>
+        <div class="maintenance-actions">
+          <button class="operation" data-job="backfill">
+            <span class="operation-icon">R</span>
+            <span><b>Catch up quietly</b><small>Share older posts without announcements</small></span>
+            <strong>run &gt;</strong>
+          </button>
+          <button id="initialButton" class="operation maintenance-danger" data-job="initial">
+            <span class="operation-icon">!</span>
+            <span><b>Start over</b><small>Clear memory and re-scan the feed</small></span>
+            <strong>run &gt;</strong>
+          </button>
+        </div>
+      </section>
+
+      <section class="card log-card">
+        <div class="log-head">
+          <div>
+            <div class="kicker">RECENT ACTIVITY</div>
+            <h2>What elt.Bot has been up to</h2>
+          </div>
+          <button id="clearLog" class="clear" title="Clear this list">CLEAR</button>
+        </div>
+        <div id="log" class="log-body mono">
+          <div class="empty-log">All quiet for now — activity will show up here.</div>
+        </div>
+        <div class="log-foot mono">
+          <span class="live"><span class="pulse"></span>LIVE</span>
+          <span>elt.Bot is <b id="botState">idle</b></span>
+          <span>posts seen <b id="logPostCount">--</b></span>
+          <span class="next">checks every <b id="logInterval">--</b></span>
+        </div>
+      </section>
+    </section>
+
+    <aside class="posts-sidebar" aria-label="Stored posts">
+      <div class="posts-head"><div><div class="kicker">STORED POSTS</div><h2>Feed archive</h2></div><span id="postsCount" class="posts-count">--</span></div>
+      <div id="postsList" class="posts-list"><div class="empty-posts">No stored posts.</div></div>
+    </aside>
+
+    <footer class="footer">
+      <span id="creatorUrl" class="url">--</span>
+      <span class="badge">LOCALHOST ONLY</span>
+      <span>Port 4173</span>
+      <span class="hint">Auto-sharing stays off until you turn it on. Quiet catch-ups never announce.</span>
+    </footer>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

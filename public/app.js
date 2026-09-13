@@ -1,0 +1,26 @@
+const $ = selector => document.querySelector(selector);
+let lastLog = '';
+let actionBusy = false;
+const labels = { update: 'FETCH', send: 'SEND', backfill: 'BACKFILL', sample: 'SAMPLE', initial: 'RESET', monitor: 'POLL' };
+function escapeHtml(value) { return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character])); }
+function renderLog(lines) { const output = lines.filter(Boolean).slice(-80).map(line => { const match = line.match(/^\[(INFO|WARN|ERROR|GUI)\]\s*(.*)$/); const tag = match ? match[1] : 'LOG'; const message = match ? match[2] : line; const type = tag === 'ERROR' ? 'err' : tag === 'WARN' ? 'warn' : tag === 'INFO' ? 'ok' : 'info'; const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); return `<div class="line"><span class="timestamp">${time}</span><span class="tag ${type}">${labels[tag.toLowerCase()] || tag}</span><span class="message">${escapeHtml(message)}</span></div>`; }).join(''); $('#log').innerHTML = output || '<div class="empty-log">No activity yet.</div>'; $('#log').scrollTop = $('#log').scrollHeight; }
+function renderPosts(posts) { $('#postsCount').textContent = posts.length; $('#postsList').innerHTML = posts.map(post => { const state = post.pinned ? { icon: 'push_pin', label: 'Pinned' } : post.locked ? { icon: 'lock', label: 'Locked' } : { icon: 'lock_open', label: 'Open' }; return `<a class="post-item${post.pinned ? ' pinned' : ''}" href="${escapeHtml(post.url)}"><span class="post-marker material-symbols-outlined" title="${state.label}" aria-label="${state.label}">${state.icon}</span><span class="post-copy"><b>${escapeHtml(post.title)}</b><small>${state.label}</small></span><span class="post-arrow">&gt;</span></a>`; }).join('') || '<div class="empty-posts">No stored posts.</div>'; }
+async function refresh() { try { const response = await fetch('/api/status', { cache: 'no-store' }); const data = await response.json(); $('#connectionDot').className = 'dot online-dot'; $('#connectionText').textContent = 'Dashboard online'; $('#seenCount').textContent = data.state.seen; $('#lastSent').textContent = data.state.lastSentDisc ? data.state.lastSentTitle : 'None'; $('#lastSentFoot').textContent = data.state.lastSentDisc ? data.state.lastSentTitle : 'None'; $('#pollIntervalValue').textContent = `${Math.round(data.pollIntervalMs / 1000)}s`; $('#logInterval').textContent = `${Math.round(data.pollIntervalMs / 1000)}s`; $('#creatorUrl').textContent = data.creatorUrl; $('#logPostCount').textContent = data.state.seen; renderPosts(data.posts || []); const monitoring = data.activeJob === 'monitor'; const running = data.running; $('#jobBadge').textContent = running ? (labels[data.activeJob] || 'RUNNING') : 'IDLE'; $('#jobBadge').className = `status ${running ? 'working' : 'idle'}`; $('#botState').textContent = monitoring ? 'polling' : running ? 'busy' : 'idle'; $('#pollState').textContent = monitoring ? 'ACTIVE' : 'OFF'; $('#pollState').className = monitoring ? 'active' : ''; $('#pollToggleLabel').textContent = monitoring ? 'ON' : 'OFF'; $('#monitorButton').className = `switch ${monitoring ? 'on' : ''}`; $('#monitorButton').setAttribute('aria-label', monitoring ? 'Turn off bot' : 'Enable polling'); document.querySelectorAll('.operation, #initialButton').forEach(button => { button.disabled = running; }); $('#monitorButton').disabled = running && !monitoring; const combinedLog = data.logs.join('\n'); if (combinedLog !== lastLog) { renderLog(data.logs); lastLog = combinedLog; } } catch { $('#connectionDot').className = 'dot offline-dot'; $('#connectionText').textContent = 'Server unavailable'; } }
+async function run(job) {
+	if (actionBusy) return;
+	if (job === 'initial' && !window.confirm('This clears state.json and resets the feed memory. Continue?')) return;
+	actionBusy = true;
+	document.querySelectorAll('[data-job], #initialButton, #exitButton').forEach(button => { button.disabled = true; });
+	try {
+		if (job === 'monitor' && $('#monitorButton').classList.contains('on')) {
+			await fetch('/api/stop', { method: 'POST' });
+		} else {
+			const response = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job }) });
+			if (!response.ok) { const error = await response.json(); window.alert(error.error || 'Could not start operation'); }
+		}
+		await refresh();
+	} finally {
+		actionBusy = false;
+	}
+}
+document.querySelectorAll('[data-job]').forEach(button => button.addEventListener('click', () => run(button.dataset.job))); $('#clearLog').addEventListener('click', () => { $('#log').innerHTML = '<div class="empty-log">Log display cleared.</div>'; lastLog = ''; }); $('#exitButton').addEventListener('click', async () => { if (window.confirm('Stop the bot and close the dashboard?')) await fetch('/api/shutdown', { method: 'POST' }); }); function updateClock() { $('#clock').textContent = new Date().toLocaleTimeString([], { hour12: false }); } updateClock(); setInterval(updateClock, 1000); refresh(); setInterval(refresh, 1000);
