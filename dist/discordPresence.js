@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const config_1 = require("./config");
+const moderation_1 = require("./discord/moderation");
 try {
     (0, config_1.validateConfig)();
 }
@@ -42,7 +43,8 @@ catch (err) {
     console.error('[ERROR] Invalid configuration:', err instanceof Error ? err.message : err);
     process.exit(1);
 }
-const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds, discord_js_1.GatewayIntentBits.GuildMembers] });
+const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds, discord_js_1.GatewayIntentBits.GuildMembers, discord_js_1.GatewayIntentBits.GuildMessages] });
+client.on('messageCreate', moderation_1.handleForbiddenChannelMessage);
 client.on('guildMemberAdd', async (member) => {
     try {
         const { sendWelcomeNotification } = await Promise.resolve().then(() => __importStar(require('./discord/notifier')));

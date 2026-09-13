@@ -12,6 +12,7 @@
     "update-fetch": "ts-node src/updateFetch.ts",
     "send-sample": "ts-node src/sendSample.ts",
     "send-welcome-sample": "ts-node src/sendWelcomeSample.ts",
+    "send-forbidden-warning": "ts-node src/sendForbiddenWarning.ts",
     "backfill-updates": "ts-node src/backfillUpdates.ts",
     "send-new-posts": "ts-node src/sendNewPosts.ts",
     "gui": "ts-node src/guiServer.ts",

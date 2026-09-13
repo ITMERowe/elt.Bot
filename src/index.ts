@@ -3,6 +3,7 @@ import { config, validateConfig } from './config';
 import { fetchRecentPostsFromCreator } from './ganknow/client';
 import { readState, writeState, isSeenPost, markSeenPostsByPosts } from './services/storage';
 import { sendPostNotification, sendWelcomeNotification } from './discord/notifier';
+import { handleForbiddenChannelMessage } from './discord/moderation';
 
 async function main() {
   try {
@@ -12,7 +13,9 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+  const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages] });
+
+  client.on('messageCreate', handleForbiddenChannelMessage);
 
   client.on('guildMemberAdd', async member => {
     try {
@@ -54,7 +57,7 @@ async function main() {
       try {
         console.info('[INFO] Checking Ganknow...');
         // Fetch a batch of recent posts (newest-first)
-        const recent = await fetchRecentPostsFromCreator(config.ganknowCreatorUrl, 20);
+        const recent = await fetchRecentPostsFromCreator(config.ganknowCreatorUrl, 5);
         if (!recent || recent.length === 0) {
           console.info('[INFO] No posts found');
           return;

@@ -16,7 +16,7 @@ async function main() {
         const pinnedId = (state.seenPosts || []).find(p => !!p.pinned)?.id || null;
         const stopSpinner = (0, spinner_1.startSpinner)('Fetching recent posts from creator feed');
         // Fail-fast: call fetchRecentPostsFromCreator directly (same behavior as initial-fetch)
-        const posts = await (0, client_1.fetchRecentPostsFromCreator)(config_1.config.ganknowCreatorUrl, 100);
+        const posts = await (0, client_1.fetchRecentPostsFromCreator)(config_1.config.ganknowCreatorUrl, 10);
         stopSpinner();
         if (!posts || posts.length === 0) {
             console.info('[INFO] No recent posts found.');

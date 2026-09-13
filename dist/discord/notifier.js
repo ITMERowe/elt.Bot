@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendPostNotification = sendPostNotification;
 exports.sendWelcomeNotification = sendWelcomeNotification;
+exports.sendForbiddenChannelWarning = sendForbiddenChannelWarning;
 const discord_js_1 = require("discord.js");
 const config_1 = require("../config");
 const welcomeBanner_1 = require("./welcomeBanner");
@@ -23,11 +24,6 @@ async function sendPostNotification(client, channelId, post, options = {}) {
         throw new Error('Configured channel not found or not a text or announcement channel');
     }
     const title = post.title || 'New Ganknow Post';
-    function formatWatermark(d) {
-        const date = d ? new Date(d) : new Date();
-        const opts = { year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-        return `luv karamel`;
-    }
     const embed = new discord_js_1.EmbedBuilder()
         .setTitle(`New Post: ${title}`)
         .setURL(post.url)
@@ -38,10 +34,7 @@ async function sendPostNotification(client, channelId, post, options = {}) {
         embed.setImage(imageUrl);
     // fields: CTA (locked badge removed until detection is reliable)
     const fields = [];
-    const cta = (config_1.config.ganknowCreatorUrl && config_1.config.ganknowCreatorUrl.toLowerCase().includes('karamelt'))
-        ? 'View on Ganknow and support me ❤️'
-        : 'View on Ganknow';
-    fields.push({ name: '\u200b', value: shorten(cta) || '' });
+    fields.push({ name: '\u200b', value: shorten(config_1.config.discordPostCta) || '' });
     const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setLabel('View Post').setStyle(discord_js_1.ButtonStyle.Link).setURL(post.url));
     const message = await channel.send({ embeds: [embed.setFields(fields)], components: [row] });
     if (options.autoPublish !== false && channel instanceof discord_js_1.NewsChannel) {
@@ -67,6 +60,23 @@ async function sendWelcomeNotification(client, channelId, member) {
         }
         catch (err) {
             console.warn('[WARN] Welcome sent but automatic publishing failed:', err instanceof Error ? err.message : err);
+        }
+    }
+}
+async function sendForbiddenChannelWarning(client, channelId) {
+    if (!channelId)
+        return;
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !(channel instanceof discord_js_1.TextChannel || channel instanceof discord_js_1.NewsChannel)) {
+        throw new Error('Forbidden channel not found or not a text or announcement channel');
+    }
+    const message = await channel.send('⚠️ **Warning:** This channel is not for chatting. Please do not post messages here. Messages in this channel may result in an automatic ban.');
+    if (channel instanceof discord_js_1.NewsChannel) {
+        try {
+            await message.crosspost();
+        }
+        catch (err) {
+            console.warn('[WARN] Warning sent but automatic publishing failed:', err instanceof Error ? err.message : err);
         }
     }
 }

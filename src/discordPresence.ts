@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { config, validateConfig } from './config';
+import { handleForbiddenChannelMessage } from './discord/moderation';
 
 try {
   validateConfig();
@@ -8,7 +9,9 @@ try {
   process.exit(1);
 }
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages] });
+
+client.on('messageCreate', handleForbiddenChannelMessage);
 
 client.on('guildMemberAdd', async member => {
   try {

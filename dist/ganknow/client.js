@@ -30,7 +30,7 @@ function allowedImage(url) {
 function sanitizePostMedia(post) {
     return { ...post, image: allowedImage(post.image), thumbnail: allowedImage(post.thumbnail) };
 }
-async function fetchRenderedFeed(creatorUrl) {
+async function fetchRenderedFeed(creatorUrl, targetCount) {
     const feedUrl = creatorUrl.includes('?') ? `${creatorUrl}&tab=feed` : `${creatorUrl}?tab=feed`;
     const browser = await playwright_1.chromium.launch({ headless: true });
     try {
@@ -41,17 +41,27 @@ async function fetchRenderedFeed(creatorUrl) {
         let unchangedRounds = 0;
         for (let round = 0; round < 60 && unchangedRounds < 4; round++) {
             const count = await page.locator('.post-card').count();
+            if (targetCount && count >= targetCount)
+                break;
             unchangedRounds = count === previousCount ? unchangedRounds + 1 : 0;
             previousCount = count;
             await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
             await page.waitForTimeout(900);
         }
-        const posts = await page.$$eval('.post-card', cards => cards.map(card => {
+        const creatorSlug = (() => {
+            try {
+                return new URL(creatorUrl).pathname.split('/').filter(Boolean).pop()?.replace(/[-_]+/g, ' ') || '';
+            }
+            catch {
+                return '';
+            }
+        })();
+        const posts = await page.$$eval('.post-card', (cards, suffix) => cards.map(card => {
             const id = card.getAttribute('id') || '';
             const href = card.querySelector('a[href*="/post/"]')?.getAttribute('href') || '';
             const postId = id || (href.match(/\/post\/([0-9a-f-]{36})/i)?.[1] || '');
             const title = (card.querySelector('h1')?.textContent || '').replace(/\s+/g, ' ').trim();
-            const normalize = (value) => value.replace(/\s*-\s*karamelt\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const normalize = (value) => value.replace(new RegExp(`\\s*-\\s*${suffix}\\s*$`, 'i'), '').replace(/\s+/g, ' ').trim().toLowerCase();
             const expectedTitle = normalize(title);
             let thumbnail;
             for (const image of Array.from(card.querySelectorAll('img'))) {
@@ -67,7 +77,7 @@ async function fetchRenderedFeed(creatorUrl) {
                 thumbnail,
                 locked: /\bLOCKED\b|Berlangganan untuk Membuka|Subscribe to Unlock/i.test(card.textContent || '')
             };
-        }));
+        }), creatorSlug);
         return posts.filter(post => post.id).map(sanitizePostMedia);
     }
     finally {
@@ -75,7 +85,7 @@ async function fetchRenderedFeed(creatorUrl) {
     }
 }
 async function fetchRecentPostsFromCreator(creatorUrl, limit = 20) {
-    return (await fetchRenderedFeed(creatorUrl)).slice(0, limit);
+    return (await fetchRenderedFeed(creatorUrl, limit)).slice(0, limit);
 }
 async function fetchAllPostsFromCreator(creatorUrl) {
     return fetchRenderedFeed(creatorUrl);

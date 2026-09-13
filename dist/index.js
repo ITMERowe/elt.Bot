@@ -5,6 +5,7 @@ const config_1 = require("./config");
 const client_1 = require("./ganknow/client");
 const storage_1 = require("./services/storage");
 const notifier_1 = require("./discord/notifier");
+const moderation_1 = require("./discord/moderation");
 async function main() {
     try {
         (0, config_1.validateConfig)();
@@ -13,7 +14,8 @@ async function main() {
         console.error('[ERROR] Invalid configuration:', err instanceof Error ? err.message : err);
         process.exit(1);
     }
-    const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds, discord_js_1.GatewayIntentBits.GuildMembers] });
+    const client = new discord_js_1.Client({ intents: [discord_js_1.GatewayIntentBits.Guilds, discord_js_1.GatewayIntentBits.GuildMembers, discord_js_1.GatewayIntentBits.GuildMessages] });
+    client.on('messageCreate', moderation_1.handleForbiddenChannelMessage);
     client.on('guildMemberAdd', async (member) => {
         try {
             await (0, notifier_1.sendWelcomeNotification)(client, config_1.config.welcomeChannelId, member);
@@ -52,7 +54,7 @@ async function main() {
             try {
                 console.info('[INFO] Checking Ganknow...');
                 // Fetch a batch of recent posts (newest-first)
-                const recent = await (0, client_1.fetchRecentPostsFromCreator)(config_1.config.ganknowCreatorUrl, 20);
+                const recent = await (0, client_1.fetchRecentPostsFromCreator)(config_1.config.ganknowCreatorUrl, 5);
                 if (!recent || recent.length === 0) {
                     console.info('[INFO] No posts found');
                     return;

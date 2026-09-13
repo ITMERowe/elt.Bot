@@ -17,7 +17,7 @@ async function main() {
 
     const stopSpinner = startSpinner('Fetching recent posts from creator feed');
     // Fail-fast: call fetchRecentPostsFromCreator directly (same behavior as initial-fetch)
-    const posts = await fetchRecentPostsFromCreator(config.ganknowCreatorUrl, 100);
+    const posts = await fetchRecentPostsFromCreator(config.ganknowCreatorUrl, 10);
     stopSpinner();
 
     if (!posts || posts.length === 0) {

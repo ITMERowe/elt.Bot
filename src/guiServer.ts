@@ -65,6 +65,7 @@ async function getStatus() {
       pinned: !!post.pinned
     })),
     creatorUrl: config.ganknowCreatorUrl,
+    creatorName: config.ganknowCreatorName,
     pollIntervalMs: config.pollIntervalMs
   };
 }

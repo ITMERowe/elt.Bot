@@ -27,11 +27,6 @@ export async function sendPostNotification(
   }
 
   const title = post.title || 'New Ganknow Post';
-  function formatWatermark(d?: Date) {
-    const date = d ? new Date(d) : new Date();
-    const opts: Intl.DateTimeFormatOptions = { year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-    return `luv karamel`;
-  }
 
   const embed = new EmbedBuilder()
     .setTitle(`New Post: ${title}`)
@@ -45,10 +40,7 @@ export async function sendPostNotification(
   // fields: CTA (locked badge removed until detection is reliable)
   const fields: { name: string; value: string; inline?: boolean }[] = [];
 
-  const cta = (config.ganknowCreatorUrl && config.ganknowCreatorUrl.toLowerCase().includes('karamelt'))
-    ? 'View on Ganknow and support me ❤️'
-    : 'View on Ganknow';
-  fields.push({ name: '\u200b', value: shorten(cta) || '' });
+  fields.push({ name: '\u200b', value: shorten(config.discordPostCta) || '' });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setLabel('View Post').setStyle(ButtonStyle.Link).setURL(post.url)
@@ -79,6 +71,27 @@ export async function sendWelcomeNotification(client: Client, channelId: string,
       await message.crosspost();
     } catch (err) {
       console.warn('[WARN] Welcome sent but automatic publishing failed:', err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+export async function sendForbiddenChannelWarning(client: Client, channelId: string): Promise<void> {
+  if (!channelId) return;
+
+  const channel = await client.channels.fetch(channelId);
+  if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
+    throw new Error('Forbidden channel not found or not a text or announcement channel');
+  }
+
+  const message = await channel.send(
+    '⚠️ **Warning:** This channel is not for chatting. Please do not post messages here. Messages in this channel may result in an automatic ban.'
+  );
+
+  if (channel instanceof NewsChannel) {
+    try {
+      await message.crosspost();
+    } catch (err) {
+      console.warn('[WARN] Warning sent but automatic publishing failed:', err instanceof Error ? err.message : err);
     }
   }
 }

@@ -1,6 +1,8 @@
-# elt.Bot
+# elt.Bot — Ganknow Creator Discord Assistant
 
-`elt.Bot` watches a public Ganknow creator feed and publishes new posts to a Discord text or announcement channel. It also includes a localhost dashboard for fetching, publishing, backfilling, resetting, and monitoring the feed.
+`elt.Bot` is a configurable Discord assistant for Ganknow creators. It watches a public creator feed and publishes new posts to a Discord text or announcement channel. It also includes a localhost dashboard for fetching, publishing, backfilling, resetting, and monitoring the feed.
+
+This project was designed from the start as a reusable tool for any Ganknow creator. Karamelt and her team provided the original deployment and helped shape the first version; creator-specific settings are configured through `.env`, so the same bot can be used by other creators without changing the source code.
 
 The bot uses Playwright to render the creator feed, because the post cards are loaded by the Ganknow web application. It extracts post IDs, titles, thumbnails, locked status, and post URLs from `.post-card` elements. It does not use the authenticated Ganknow Creator API.
 
@@ -12,9 +14,9 @@ The bot uses Playwright to render the creator feed, because the post cards are l
 - Chromium for Playwright
 - .NET 8 SDK only when building the Windows launcher
 
-The Discord bot needs permission to view the target channel, send messages, embed links, and attach links. Announcement-channel publishing is attempted automatically when the target is a news channel.
+The Discord bot needs permission to view the target channel, send messages, embed links, and attach links. For automatic moderation, it also needs **Ban Members**, **Moderate Members**, and **Manage Messages** permissions, plus a role high enough to ban or timeout target members. Ordinary chat in the forbidden channel deletes that member’s messages from the last hour across accessible text channels and times them out for one hour. A message containing `@everyone`, `@here`, or a user mention deletes the member’s discoverable messages and bans them immediately. Channels the bot cannot view or manage are skipped. Announcement-channel publishing is attempted automatically when the target is a news channel.
 
-To receive new-member events, open the Discord Developer Portal, select the bot, open **Bot > Privileged Gateway Intents**, enable **Server Members Intent**, and save. The bot posts a generated welcome banner in `WELCOME_CHANNEL_ID` whenever someone joins a server where the bot is present. If that variable is empty, it uses `DISCORD_CHANNEL_ID`. This works even when feed auto-sharing is turned off.
+To receive new-member and moderation events, open the Discord Developer Portal, select the bot, open **Bot > Privileged Gateway Intents**, enable **Server Members Intent**, and save. The bot posts a generated welcome banner in `WELCOME_CHANNEL_ID` whenever someone joins a server where the bot is present. If that variable is empty, it uses `UPDATE_CHANNEL_ID`. This works even when feed auto-sharing is turned off. Set `FORBIDDEN_CHANNEL_ID` only when you want automatic bans; the bot ignores its own and other bot messages.
 
 Welcome banners are generated as 900x280 PNG files. Put a background image at `public/welcome-background.png`, or set `WELCOME_BACKGROUND_PATH` to another local image path. You can add a transparent PNG as a foreground layer with `WELCOME_FOREGROUND_PATH`; it is drawn after the avatar so artwork can sit in front of or frame the profile picture. Set `WELCOME_FONT_FAMILY` to a font installed on the machine running the bot, such as `Georgia`, `Impact`, or `Trebuchet MS`. The bot then overlays the member display name, server name, and member count. If either image is missing, it continues with the available layers.
 
@@ -31,15 +33,18 @@ Set the values in `.env`:
 | Variable | Required | Description |
 | --- | --- | --- |
 | `DISCORD_TOKEN` | Yes for Discord jobs | Bot token used to log in |
-| `DISCORD_CHANNEL_ID` | Yes for Discord jobs | Destination text or announcement channel for Ganknow updates |
-| `WELCOME_CHANNEL_ID` | No | Channel for new-member welcomes; falls back to `DISCORD_CHANNEL_ID` |
+| `UPDATE_CHANNEL_ID` | Yes for Discord jobs | Destination text or announcement channel for Ganknow updates |
+| `WELCOME_CHANNEL_ID` | No | Channel for new-member welcomes; falls back to `UPDATE_CHANNEL_ID` |
+| `FORBIDDEN_CHANNEL_ID` | No | Channel where human posters are automatically banned; leave blank to disable |
 | `WELCOME_BACKGROUND_PATH` | No | Background image for generated welcome banners; defaults to `public/welcome-background.png` |
 | `WELCOME_FOREGROUND_PATH` | No | Optional transparent foreground layer drawn over the avatar and background |
 | `WELCOME_FONT_FAMILY` | No | Installed font family for banner text; defaults to `sans-serif` |
 | `WELCOME_FONT_PATH` | No | Local `.otf` or `.ttf` file used for supporting banner text |
 | `WELCOME_TITLE_FONT_PATH` | No | Local `.otf` or `.ttf` file used for the `Welcome, name!` line |
 | `WELCOME_TITLE_FONT_FAMILY` | No | Alias used when registering the title font; defaults to `WelcomeTitle` |
-| `GANKNOW_CREATOR_URL` | No | Creator feed URL; defaults to `https://ganknow.com/karamelt` |
+| `GANKNOW_CREATOR_URL` | No | Creator feed URL|
+| `GANKNOW_CREATOR_NAME` | No | Creator name shown in the dashboard; derived from the URL when blank |
+| `DISCORD_POST_CTA` | No | CTA text shown below update embeds; defaults to `View on Ganknow` |
 | `POLL_INTERVAL_MS` | No | Continuous monitor interval in milliseconds; defaults to `3600000` (one hour) |
 | `DISCORD_CLIENT_ID` | No | Reserved for Discord application configuration |
 | `DISCORD_APP_ID` | No | Reserved for Discord application configuration |
@@ -110,6 +115,7 @@ This publishes `elt.Bot Dashboard.exe` in the project root. Run it from the proj
 | `npm run backfill-updates` | Publish pending posts without automatic announcement cross-posting |
 | `npm run send-sample` | Send a test embed to Discord |
 | `npm run send-welcome-sample` | Generate a welcome banner using an existing non-bot server member |
+| `npm run send-forbidden-warning` | Manually post the forbidden-channel warning |
 | `npm run build` | Type-check and compile TypeScript to `dist/` |
 | `npm run start` | Run the compiled continuous monitor |
 
@@ -151,7 +157,7 @@ data/state.json            Runtime state, ignored by Git
 ## Troubleshooting
 
 - **Chromium executable missing:** run `npx playwright install chromium`.
-- **Invalid configuration:** set `DISCORD_TOKEN` and `DISCORD_CHANNEL_ID` in `.env`.
+- **Invalid configuration:** set `DISCORD_TOKEN` and `UPDATE_CHANNEL_ID` in `.env`.
 - **No new posts:** run `npm run update-fetch`, then inspect the dashboard archive and run `npm run send-new-posts`.
 - **Dashboard port in use:** set `GUI_PORT` to another local port. The Windows launcher currently expects port `4173`, so use `npm run gui` directly when changing it.
 - **Feed requests fail or are rate-limited:** wait and retry. The scraper depends on the public Ganknow page and its rendered `.post-card` markup.
